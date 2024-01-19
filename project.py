@@ -1,7 +1,7 @@
 import numpy as np
-from ioh import get_problem, ProblemClass, logger, Experiment
+from ioh import get_problem, ProblemClass, logger, Experiment, OptimizationType
 
-np.random.seed(42)
+BUDGET = 10000
 
 class RandomSearch:
     def __init__(self, budget):
@@ -15,20 +15,18 @@ class RandomSearch:
         self.a_tracked_parameter = None
 
     def __call__(self, func):
-        self.f_opt = np.Inf
-        self.x_opt = None
-        for i in range(self.budget):
-            x = np.random.uniform(func.bounds.lb, func.bounds.ub)
+        for _ in range(self.budget):
+            # We can use the problems meta information to see the number of variables needed
+            x = np.random.randint(0, 2, size=func.meta_data.n_variables)
+            func(x)
 
-            # Update the tracked parameter
-            self.a_tracked_parameter = i ** 10
+    @property
+    def a_property(self):
+        return np.random.randint(100)
 
-            f = func(x)
-            if f < self.f_opt:
-                self.f_opt = f
-                self.x_opt = x
+    def reset(self):
+        self.algorithm_id = np.random.randint(100)
 
-        return self.f_opt, self.x_opt
 
     @property
     def a_property(self):
@@ -38,17 +36,16 @@ class RandomSearch:
         self.algorithm_id = np.random.randint(100)
 
 exp = Experiment(
-    RandomSearch(10),                   # instance of optimization algorithm
-    [1],                                # list of problem id's
-    [1, 2],                             # list of problem instances
-    [5],                                # list of problem dimensions
-    problem_class = ProblemClass.BBOB,  # the problem type, function ids should correspond to problems of this type
-    njobs = 1,                          # the number of parrellel jobs for running this experiment
-    reps = 2,                           # the number of repetitions for each (id x instance x dim)
-    logged_attributes = [               # list of the tracked variables, must be available on the algorithm instance (RandomSearch)
-        "a_property",
-        "a_tracked_parameter"
-    ]
+    RandomSearch(BUDGET),                 # instance of optimization algorithm
+    list(ProblemClass.GRAPH.problems.keys())[:3],             # list of problem id's
+    [1],                             # list of problem instances
+    [1],                                # list of problem dimensions
+    problem_class = ProblemClass.GRAPH,  # the problem type, function ids should correspond to problems of this type
+    njobs = 1,                          # the number of parallel jobs for running this experiment
+    reps = 3,                           # the number of repetitions for each (id x instance x dim)
+    logged_attributes = [               # list of the tracked variables, must be available on the algorithm instance
+        "a_property"
+    ],
 )
 
 exp.run()
