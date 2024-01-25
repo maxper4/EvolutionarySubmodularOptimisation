@@ -167,15 +167,61 @@ class WeightedImpactMutation:
                 best = child
                 best_fitness = score
 
+class ParallelSearch:
+    def __init__(self, budget):
+        #Note that we should re-initialize all dynamic variables if we want to run the same algorithm multiple times
+        self.budget = budget
+
+        # A parameter static over the course of an optimization run of an algorithm
+        self.algorithm_id = np.random.randint(100)
+
+        # A dynamic parameter updated by the algorithm
+        self.a_tracked_parameter = None
+
+    def __call__(self, func):
+        n = func.meta_data.n_variables
+        x = np.random.randint(0, 2, size=func.meta_data.n_variables)
+        alpha = 1       # Parameter in [0..n]
+        prob1 = 1/n     # Parameter in [0..1]
+        for _ in range(self.budget):
+            nb1 = np.count_nonzero(x)
+            nb0 = n - nb1
+            if(nb0 == 0):
+                prob0 = 0.5
+            else:
+                prob0 = ((alpha + nb1*prob1))/nb0
+            # The idea is that on average, we only add alpha new bits
+            for i in range(n):
+                if x[i] == 0:
+                    r = np.random.uniform(0, 1)
+                    if r <= prob0:
+                        x[i] = 1
+                else:
+                    r = np.random.uniform(0, 1)
+                    if r <= prob1:
+                        x[i] = 0
+            func(x)
+
+Algs = [RandomSearch,                   #0
+        MutationByProgressSequential,   #1
+        MutationByProgress,             #2
+        RandomFromSmallSpeedup,         #3
+        WeightedImpact,                 #4
+        WeightedImpactMutation(BUDGET, bucket_percent=0.1),         #5
+        ParallelSearch(BUDGET)]                 #6
+
+Alg = Algs[6]          
+
+
 exp = Experiment(
-    WeightedImpactMutation(BUDGET, bucket_percent=0.1),                 # instance of optimization algorithm
-    list(ProblemClass.GRAPH.problems.keys())[:3],             # list of problem id's
-    [1],                             # list of problem instances
-    [1],                                # list of problem dimensions
-    problem_class = ProblemClass.GRAPH,  # the problem type, function ids should correspond to problems of this type
-    njobs = 1,                          # the number of parallel jobs for running this experiment
-    reps = 3,                           # the number of repetitions for each (id x instance x dim)
-    logged_attributes = [               # list of the tracked variables, must be available on the algorithm instance
+    Alg,                                            # instance of optimization algorithm
+    list(ProblemClass.GRAPH.problems.keys())[:3],   # list of problem id's
+    [1],                                            # list of problem instances
+    [1],                                            # list of problem dimensions
+    problem_class = ProblemClass.GRAPH,             # the problem type, function ids should correspond to problems of this type
+    njobs = 1,                                      # the number of parallel jobs for running this experiment
+    reps = 3,                                       # the number of repetitions for each (id x instance x dim)
+    logged_attributes = [                           # list of the tracked variables, must be available on the algorithm instance
     ],
 )
 
