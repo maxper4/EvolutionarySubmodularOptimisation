@@ -119,19 +119,33 @@ class WeightedImpact:
         n = func.meta_data.n_variables
         best = np.random.randint(0, 2, size=n)
         best_fitness = func(best)
-        factor = 1.01
-        max = 0.8
-        min = 0.2
+        factor = 1.1
+        max = 0.95
+        min = 0.05
         weights = [0.5] * n
+        bucket_size = int(n * self.bucket_percent)
 
         for _ in range(self.budget -1):
-            child = [np.random.choice([0, 1], p=[1-w, w]) for w in weights]
+            child = best.copy()
+            bucket = np.random.choice(range(n), replace=False, size=bucket_size)
+            for c in bucket:
+                child[c] = np.random.choice([0, 1], p=[1-weights[c], weights[c]])
             score = func(child)
-            for i in range(n):
-                if child[i] == 1:
-                    weights[i] = weights[i] * factor if weights[i] * factor < max else max
-                else:
-                    weights[i] = weights[i] / factor if weights[i] * factor > min else min
+            if score > best_fitness:
+                best = child
+                best_fitness = score
+                for i in bucket:
+                    if child[i] == 1:
+                        weights[i] = weights[i] * factor if weights[i] * factor < max else max
+                    else:
+                        weights[i] = weights[i] / factor if weights[i] / factor > min else min
+            else:
+                for i in bucket:
+                    if child[i] == 1:
+                        weights[i] = weights[i] / factor if weights[i] / factor > min else min
+                    else:
+                        weights[i] = weights[i] * factor if weights[i] * factor < max else max
+
 
 class WeightedImpactMutation:
     def __init__(self, budget, bucket_percent=0.1):
@@ -146,29 +160,37 @@ class WeightedImpactMutation:
         n = func.meta_data.n_variables
         best = np.random.randint(0, 2, size=n)
         best_fitness = func(best)
-        factor = 1.05
+        factor = 1.1
         max = 0.95
         min = 0.05
         weights = [0.5] * n
         bucket_size = int(n * self.bucket_percent)
+        mutation_rate = 0.1
 
         for _ in range(self.budget -1):
             child = best.copy()
+            weights = [w if np.random.rand() > mutation_rate else 0.5 for w in weights]
             bucket = np.random.choice(range(n), replace=False, size=bucket_size)
             for c in bucket:
                 child[c] = np.random.choice([0, 1], p=[1-weights[c], weights[c]])
             score = func(child)
-            for i in bucket:
-                if child[i] == 1:
-                    weights[i] = weights[i] * factor if weights[i] * factor < max else max
-                else:
-                    weights[i] = weights[i] / factor if weights[i] * factor > min else min
             if score > best_fitness:
                 best = child
                 best_fitness = score
+                for i in bucket:
+                    if child[i] == 1:
+                        weights[i] = weights[i] * factor if weights[i] * factor < max else max
+                    else:
+                        weights[i] = weights[i] / factor if weights[i] / factor > min else min
+            else:
+                for i in bucket:
+                    if child[i] == 1:
+                        weights[i] = weights[i] / factor if weights[i] / factor > min else min
+                    else:
+                        weights[i] = weights[i] * factor if weights[i] * factor < max else max
 
 exp = Experiment(
-    WeightedImpactMutation(BUDGET, bucket_percent=0.1),                 # instance of optimization algorithm
+    WeightedImpactMutation(BUDGET, bucket_percent=0.15),                 # instance of optimization algorithm
     list(ProblemClass.GRAPH.problems.keys())[:3],             # list of problem id's
     [1],                             # list of problem instances
     [1],                                # list of problem dimensions
