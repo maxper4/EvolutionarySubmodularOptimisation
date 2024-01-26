@@ -147,10 +147,10 @@ class WeightedImpact:
                         weights[i] = weights[i] * factor if weights[i] * factor < max else max
 
 class WeightedImpactMutation:
-    def __init__(self, budget, bucket_percent=0.1):
+    def __init__(self, budget, max_bucket_percent=0.1):
         #Note that we should re-initialize all dynamic variables if we want to run the same algorithm multiple times
         self.budget = budget
-        self.bucket_percent = bucket_percent
+        self.max_bucket_percent = max_bucket_percent
 
         # A parameter static over the course of an optimization run of an algorithm
         self.algorithm_id = np.random.randint(100)
@@ -163,18 +163,22 @@ class WeightedImpactMutation:
         max = 0.95
         min = 0.05
         weights = [0.5] * n
-        bucket_size = int(n * self.bucket_percent)
+        max_bucket_size = int(n * self.max_bucket_percent)
         mutation_rate = 0.1
+        stuck_count = 0
 
-        for _ in range(self.budget -1):
+        for e in range(self.budget -1):
             child = best.copy()
+            mutation_rate = 0.01 * stuck_count if 0.01 * stuck_count < 0.5 else 0.5
             weights = [w if np.random.rand() > mutation_rate else 0.5 for w in weights]
+            bucket_size = int(e * max_bucket_size //self.budget)
             bucket = np.random.choice(range(n), replace=False, size=bucket_size)
             for c in bucket:
                 child[c] = np.random.choice([0, 1], p=[1-weights[c], weights[c]])
             score = func(child)
             if score > best_fitness:
                 best = child
+                stuck_count = 0
                 best_fitness = score
                 for i in bucket:
                     if child[i] == 1:
@@ -182,11 +186,79 @@ class WeightedImpactMutation:
                     else:
                         weights[i] = weights[i] / factor if weights[i] / factor > min else min
             else:
+                stuck_count += 1
                 for i in bucket:
                     if child[i] == 1:
                         weights[i] = weights[i] / factor if weights[i] / factor > min else min
                     else:
                         weights[i] = weights[i] * factor if weights[i] * factor < max else max
+
+class SmallToLargeWithCleanup:
+    def __init__(self, budget, max_bucket_percent=0.1):
+        #Note that we should re-initialize all dynamic variables if we want to run the same algorithm multiple times
+        self.budget = budget
+        self.max_bucket_percent = max_bucket_percent
+
+        # A parameter static over the course of an optimization run of an algorithm
+        self.algorithm_id = np.random.randint(100)
+
+    def __call__(self, func):
+        n = func.meta_data.n_variables
+        best = np.random.randint(0, 2, size=n)
+        best_fitness = func(best)
+        max_bucket_size = int(n * self.max_bucket_percent)
+        max_cleanup_size = int(n * 0.05)
+
+        for e in range(self.budget -1):
+            child = best.copy()
+            bucket_size = int(e * max_bucket_size //self.budget)
+            cleanup_size = np.random.randint(1, int(e * max_cleanup_size //self.budget) +2)
+            cleanup = np.random.choice(range(n), replace=False, size=cleanup_size)
+            bucket = np.random.choice(range(n), replace=False, size=bucket_size)
+            for c in bucket:
+                    child[c] = 1 - child[c]
+            for c in cleanup:
+                child[c] = 0
+
+            score = func(child)
+            if score > best_fitness:
+                best = child
+                best_fitness = score
+
+class OnePOneWithCleanup:
+    def __init__(self, budget):
+        #Note that we should re-initialize all dynamic variables if we want to run the same algorithm multiple times
+        self.budget = budget
+
+        # A parameter static over the course of an optimization run of an algorithm
+        self.algorithm_id = np.random.randint(100)
+
+    def __call__(self, func):
+        n = func.meta_data.n_variables
+        best = np.random.randint(0, 2, size=n)
+        best_fitness = func(best)
+        max_cleanup_size = int(n * 0.0)
+
+        for e in range(self.budget -1):
+            child = best.copy()
+            for c in range(n):
+                if child[c] == 1:
+                    if np.random.rand() < 2.0 / n:
+                        child[c] = 1 - child[c]
+                else:
+                    if np.random.rand() < 1.0 / n:
+                        child[c] = 1 - child[c]
+
+            if e * max_cleanup_size //self.budget > 1:
+                cleanup_size = np.random.randint(1, int(e * max_cleanup_size //self.budget))
+                cleanup = np.random.choice(range(n), replace=False, size=cleanup_size)
+                for c in cleanup:
+                    child[c] = 0
+
+            score = func(child)
+            if score > best_fitness:
+                best = child
+                best_fitness = score
 
 class ParallelSearch:
     def __init__(self, budget):
@@ -228,10 +300,13 @@ Algs = [RandomSearch,                   #0
         MutationByProgress,             #2
         RandomFromSmallSpeedup,         #3
         WeightedImpact,                 #4
-        WeightedImpactMutation(BUDGET, bucket_percent=0.1),         #5
-        ParallelSearch(BUDGET)]                 #6
+        WeightedImpactMutation(BUDGET, max_bucket_percent=0.1),         #5
+        ParallelSearch(BUDGET),         #6
+        SmallToLargeWithCleanup(BUDGET, max_bucket_percent=0.1),        #7
+        OnePOneWithCleanup(BUDGET),     #8
+        ]                 
 
-Alg = Algs[6]          
+Alg = Algs[8]          
 
 
 exp = Experiment(
