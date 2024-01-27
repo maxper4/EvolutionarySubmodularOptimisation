@@ -280,11 +280,9 @@ class OnePOneWithCleanup:
         n = func.meta_data.n_variables
         best = np.random.randint(0, 2, size=n)
         best_fitness = func(best)
-        max_cleanup_size = int(n * 0.0)
         check = best_fitness
         change_strat = False
         chech_frequency = 166 # steps of checking
-        child = []
         N = 0 # Targer number of 1s
         for e in range(self.budget -1):
 
@@ -303,12 +301,6 @@ class OnePOneWithCleanup:
                     else:
                         if np.random.rand() < 1.0 / n:
                             child[c] = 1 - child[c]
-
-                if e * max_cleanup_size //self.budget > 1:
-                    cleanup_size = np.random.randint(1, int(e * max_cleanup_size //self.budget))
-                    cleanup = np.random.choice(range(n), replace=False, size=cleanup_size)
-                    for c in cleanup:
-                        child[c] = 0
             else:
                 nb1 = np.count_nonzero(child)
                 nb0 = n - nb1
