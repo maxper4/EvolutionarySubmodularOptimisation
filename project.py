@@ -331,9 +331,8 @@ class OnePOneWithCleanup:
                 if(nb1 == n):
                     q = 0.5
                 else:
-                    #q = (N - (1 - self.p)*nb1)/nb0
-                    alpha = 0
-                    q = (alpha + nb1*self.p)/nb0
+
+                    q = (self.alpha + nb1*self.p)/nb0
 
                 # generation of lambda offsprings, we keep the best
 
@@ -393,26 +392,30 @@ k = 1
 # k=1, 1.0005, k/800, 0.9, alpha=0, y=10 : 11251
 
 
-
 # k=1, 1.0005, k/800, 0.5, alpha=0, y=10 : 11261
 
+# k=1, 1.0005, k/800, 0.5, alpha=1, y=10 : 11210
+
+
+
+
+
+# k=1, 1.0000, k/800, 0.5, alpha=0, y=10 : 11248
+
+# k=1, 1.0001, k/800, 0.5, alpha=0, y=10 : 11256
+
+# k=1, 1.0002, k/800, 0.5, alpha=0, y=10 : 11278
+
+# k=1, 1.0005, k/800, 0.5, alpha=0, y=10 : 11276
+
+# k=1, 1.0008, k/800, 0.5, alpha=0, y=10 : 11239
+
+
+# k=1, 1.0005, k/800, 0.5, alpha=1, y=15 : 11264
+
 # k=1, 1.0005, k/800, 0.5, alpha=1, y=10 : 11276
 
-# k=1, 1.0005, k/800, 0.5, alpha=2, y=10 : 11245
-
-
-# k=1, 1.0000, k/800, 0.5, alpha=1, y=10 : 11248
-
-# k=1, 1.0001, k/800, 0.5, alpha=1, y=10 : 11256
-
-# k=1, 1.0002, k/800, 0.5, alpha=1, y=10 : 11278
-
-# k=1, 1.0005, k/800, 0.5, alpha=1, y=10 : 11276
-
-# k=1, 1.0008, k/800, 0.5, alpha=1, y=10 : 11239
-
-
-# k=1, 1.0005, k/800, 0.5, alpha=1, y=10 : 11276
+# k=1, 1.0005, k/800, 0.5, alpha=1, y=5 : 11240
 
 
 
@@ -425,7 +428,7 @@ Algs = [RandomSearch,                   #0
         WeightedImpactMutation(BUDGET, max_bucket_percent=0.1),            #5
         ParallelSearch(BUDGET),         #6
         SmallToLargeWithCleanup(BUDGET, max_bucket_percent=0.1),           #7
-        OnePOneWithCleanup(BUDGET, 1.0005, k/800, 0.5, alpha=1, y=10),     #8
+        OnePOneWithCleanup(BUDGET, 1.0005, k/800, 0.5, alpha=0, y=10),     #8
         ]                 
 
 Alg = Algs[8]          
