@@ -292,6 +292,18 @@ class OnePOneWithCleanup:
                     x[i] = 1
         return x
 
+    def sol2str(self, x):
+        res = ""
+        for e in x:
+            res = res + str(e)
+        return res
+
+    def str2sol(self, s):
+        res = np.random.randint(0, 2, size=n)
+        for i in range(len(s)):
+            res[i] = s[i]
+        return res
+
     def __call__(self, func):
         print("start of a run")
         n = func.meta_data.n_variables
@@ -302,9 +314,12 @@ class OnePOneWithCleanup:
         chech_frequency = 166 # steps of checking
         N = 0 # Targer number of 1s
         budget = 1
+        memory = dict()
+        memory[self.sol2str(best)] = best_fitness
         while(budget < self.budget):
             # We check the ompovement slope with bigsteps
             if(budget > 500 and (not change_strat) and budget%166 == 0):
+                print(budget)
                 if(best_fitness/check < self.slope):
                     change_strat = True
                 check = best_fitness
@@ -318,12 +333,14 @@ class OnePOneWithCleanup:
                     else:
                         if np.random.rand() < 1.0 / n:
                             child[c] = 1 - child[c]
-                score = func(child)
-                budget = budget + 1
-                if score > best_fitness:
-                    best = child
-                    best_fitness = score
-                    N = np.count_nonzero(best)
+                str_child = self.sol2str(child)
+                if(not str_child in memory.keys()):
+                    score = func(child)
+                    budget = budget + 1
+                    memory[str_child] = score
+                    if score > best_fitness:
+                        best = child
+                        best_fitness = score
 
             else:
                 nb1 = np.count_nonzero(child)
@@ -331,9 +348,8 @@ class OnePOneWithCleanup:
                 if(nb1 == n):
                     q = 0.5
                 else:
-
-                    q = (self.alpha + nb1*self.p)/nb0
-
+                    alpha = 0
+                    q = (alpha + nb1*self.p)/nb0
                 # generation of lambda offsprings, we keep the best
 
                 best_child = best.copy()
@@ -344,8 +360,13 @@ class OnePOneWithCleanup:
                 for _ in range(self.y - 1):
                     child = best.copy()
                     child = self.parallelOffspring(n, child, self.p, q)
-                    score = func(child)
-                    budget = budget + 1
+                    str_child = self.sol2str(child)
+                    if(str_child in memory.keys()):
+                        score = memory[str_child]
+                    else:
+                        score = func(child)
+                        budget = budget + 1
+                        memory[str_child] = score
                     if(score > best_child_score):
                         best_child_score = score
                         best_child = child.copy()
@@ -356,8 +377,13 @@ class OnePOneWithCleanup:
                     r = np.random.uniform(0, 1)
                     if(r < c):
                         crossover[i] = best_child[i]
-                crossover_score = func(crossover)
-                budget = budget + 1
+                str_crossover = self.sol2str(crossover)
+                if(str_crossover in memory.keys()):
+                    crossover_score = memory[str_crossover]
+                else:
+                    crossover_score = func(crossover)
+                    budget = budget + 1
+                    memory[str_crossover] = crossover_score
 
                 # We keep the best generated solution
                 if(crossover_score > best_fitness):
@@ -366,59 +392,10 @@ class OnePOneWithCleanup:
                 if(best_child_score > best_fitness):
                     best = best_child.copy()
                     best_fitness = best_child_score
-                
-
-k = 1
-
-# k=5, 1.0005, k/800, 0.75, alpha=0, y=10 : 11119
-
-# k=2, 1.0005, k/800, 0.75, alpha=0, y=10 : 11242
-
-# k=1, 1.0005, k/800, 0.75, alpha=0, y=10 : 11256
-
-# k=.85, 1.0005, k/800, 0.75, alpha=0, y=10 : 11243
-
-# k=.7, 1.0005, k/800, 0.75, alpha=0, y=10 : 11247
-
-# k=.1, 1.0005, k/800, 0.75, alpha=0, y=10 : 11093
 
 
-# k=1, 1.0005, k/800, 0.25, alpha=0, y=10 : 11248
-
-# k=1, 1.0005, k/800, 0.5, alpha=0, y=10 : 11261
-
-# k=1, 1.0005, k/800, 0.75, alpha=0, y=10 : 11256
-
-# k=1, 1.0005, k/800, 0.9, alpha=0, y=10 : 11251
-
-
-# k=1, 1.0005, k/800, 0.5, alpha=0, y=10 : 11261
-
-# k=1, 1.0005, k/800, 0.5, alpha=1, y=10 : 11210
-
-
-
-
-
-# k=1, 1.0000, k/800, 0.5, alpha=0, y=10 : 11248
-
-# k=1, 1.0001, k/800, 0.5, alpha=0, y=10 : 11256
-
-# k=1, 1.0002, k/800, 0.5, alpha=0, y=10 : 11278
-
-# k=1, 1.0005, k/800, 0.5, alpha=0, y=10 : 11276
-
-# k=1, 1.0008, k/800, 0.5, alpha=0, y=10 : 11239
-
-
-# k=1, 1.0005, k/800, 0.5, alpha=1, y=15 : 11264
-
-# k=1, 1.0005, k/800, 0.5, alpha=1, y=10 : 11276
-
-# k=1, 1.0005, k/800, 0.5, alpha=1, y=5 : 11240
-
-
-
+# 1.000, 1/800, 0.5, alpha=0, y=10 :  11281
+# 1.0005, 1/800, 0.5, alpha=0, y=10 : 11335
 
 Algs = [RandomSearch,                   #0
         MutationByProgressSequential,   #1
@@ -428,20 +405,28 @@ Algs = [RandomSearch,                   #0
         WeightedImpactMutation(BUDGET, max_bucket_percent=0.1),            #5
         ParallelSearch(BUDGET),         #6
         SmallToLargeWithCleanup(BUDGET, max_bucket_percent=0.1),           #7
-        OnePOneWithCleanup(BUDGET, 1.0005, k/800, 0.5, alpha=0, y=10),     #8
+        OnePOneWithCleanup(BUDGET, 1.0005, 1/800, 0.5, alpha=0, y=10),     #8
         ]                 
 
-Alg = Algs[8]          
+Alg = Algs[8]      
 
 
+# MaxCut
+functionsList = [2000, 2001, 2002, 2003, 2004] 
+
+# MaxCoverage
+#functionsList = [2100, 2101, 2102, 2103, 2104, 2105, 2106, 2107, 2108, 2109, 2110, 2111, 2112, 2113, 2114, 2115, 2116, 2117, 2118, 2119, 2120, 2121, 2122, 2123, 2124, 2125, 2126, 2127]
+
+
+_ = list(ProblemClass.GRAPH.problems.keys())
 exp = Experiment(
     Alg,                                            # instance of optimization algorithm
-    list(ProblemClass.GRAPH.problems.keys())[:3],   # list of problem id's
+    functionsList,   # list of problem id's
     [1],                                            # list of problem instances
     [1],                                            # list of problem dimensions
     problem_class = ProblemClass.GRAPH,             # the problem type, function ids should correspond to problems of this type
     njobs = 1,                                      # the number of parallel jobs for running this experiment
-    reps = 10,                                       # the number of repetitions for each (id x instance x dim)
+    reps = 10,                                      # the number of repetitions for each (id x instance x dim)
     logged_attributes = [                           # list of the tracked variables, must be available on the algorithm instance
     ],
 )
